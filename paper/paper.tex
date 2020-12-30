@@ -1,0 +1,347 @@
+\documentclass{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphics}
+\usepackage{setspace}
+\usepackage{enumerate}
+\usepackage{changepage}
+\usepackage{color}
+\usepackage{tikz}
+\usepackage{cmbright}
+\usepackage{mathtools}
+\usepackage{bbm}
+\usepackage{dsfont}
+\usepackage{forloop}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{hyperref}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{bm}
+\usepackage{multicol}
+\usepackage{lipsum}
+\usepackage{subfig}
+\usepackage{graphicx} 
+\usepackage[backend=bibtex]{biblatex}
+
+\bibliography{bibliography}
+
+
+\newcommand{\s}[0]{\vspace{1em}}
+\newcommand{\bmat}[1]{\begin{bmatrix}#1\end{bmatrix}}
+\newcommand{\tck}{^{\prime}}
+\newcommand{\weakto}{\stackrel{\cal D}{\longrightarrow}}
+\newcommand{\E}{{\mathrm E}}
+\newcommand{\var}{\operatorname{Var}}
+\newcommand{\cov}{\operatorname{Cov}}
+\newcommand{\bF}{{\bf F}}
+\newcommand{\ba}{{\bf a}}
+\newcommand{\greekbold}[1]{\mbox{\boldmath $#1$}}
+\newcommand{\betabf}{\greekbold{\beta}}
+\newcommand{\omegabf}{\greekbold{\omega}}
+\newcommand{\Sigmabf}{\greekbold{\Sigma}}
+\newcommand{\epsilonbf}{\greekbold{\epsilon}}
+\newcommand{\thetabf}{\greekbold{\theta}}
+\newcommand{\mubf}{\greekbold{\mu}}
+\newcommand{\psibf}{\greekbold{\psi}}
+\newcommand{\p}[1]{\left( #1 \right)}
+\newcommand{\q}[0]{\quad}
+\newcommand{\pb}[1]{\big( #1 \big)}
+\newcommand{\pbb}[1]{\bigg( #1 \bigg)}
+\newcommand{\prt}[1]{\s\textbf{#1}}
+\newcommand{\ra}[0]{\Rightarrow}
+\newcommand{\xra}[1]{\xrightarrow{#1}}
+\newcommand{\brk}[1]{\left[ #1 \right]}
+\newcommand{\abs}[1]{\left| #1 \right|}
+\newcommand{\crl}[1]{\left\{ #1 \right\}}
+\newcommand{\crlb}[1]{\big\{ #1 \big\}}
+\newcommand{\qaq}[0]{\quad\Rightarrow\quad}
+\newcommand{\qq}[0]{\quad\quad}
+\newcommand{\ceil}[1]{\lceil #1 \rceil}
+\newcommand{\floor}[1]{\lfloor #1 \rfloor}
+\newcommand{\real}{{\mathbb R}}
+\newcommand{\spc}{{\mathcal S}}
+\newcommand{\Xcal}{{\mathcal X}}
+\newenvironment{answer}{\paragraph{Answer:}}{\hfill$\square$\vspace{2em}}
+\newcommand{\benum}{\begin{enumerate}}
+\newcommand{\eenum}{\end{enumerate}}
+\newcommand{\banswer}{\begin{answer}}
+\newcommand{\eanswer}{\end{answer}}
+\newcommand{\bitem}{\begin{itemize}}
+\newcommand{\eitem}{\end{itemize}}
+\renewcommand{\baselinestretch}{1.5}
+
+\title{\vspace{-2cm}Image Classification using PCA and LDA}
+\author{\vspace{-1cm} Ben Southgate -- George Washington University, STAT 6215}
+\date{}
+
+\begin{document}
+
+  \begin{multicols}{2}
+  [
+  \maketitle
+  ]
+  \section*{Abstract}
+  The pervasiveness of images on the internet make them a prime target for statistical analysis. However, the high dimensional nature of images makes them difficult to include in traditional statistical models. This paper explores the effectiveness of Principal Components Analysis (PCA) and Linear Descriminant Analysis (LDA) as tools for dimension reduction and classification of images into distinct populations. 
+  
+  Facial images of individuals from Centro Universit\'{a}rio da FEI are classified as male or female, and smiling or neutral facial expression. The results suggest that PCA and LDA can be very efficient and accurate tools for classifying images into different populations (reaching $\approx$ 95\% accuracy). However, the effectiveness is shown to be sensitive to the variation and quality of the images.
+
+  \section{Background and Dataset}
+  Given a set of images, one common analytical task is to classify them into distinct populations based on their contents. In facial recognition, for example, one needs to first classify an image as containing a face, and then try to match the face against known individuals.
+  
+  \noindent
+  \begin{minipage}{\columnwidth}
+    \makeatletter
+    \newcommand{\@captype}{figure}
+    \makeatother
+    \centering
+    \subfloat[Neutral (M)]{%
+      \includegraphics[width=2cm]{../data/color/17a.jpg}%
+    }\qquad%
+    \subfloat[Smile (F)]{%
+      \includegraphics[width=2cm]{../data/color/39b.jpg}%
+    }
+    \caption{Example Images from the FEI Database}
+  \end{minipage}
+  
+  \vspace{1em}
+  In order to illustrate the range in effectiveness of PCA and LDA for such classification, I examined images from the FEI Face Database \cite{fei}. The data consist of 200 (260x360 pixel) images of individuals, with 50 smiling men, 50 neutral men, 50 smiling women and 50 neutral women.
+  
+  The photographed individuals spanned multiple ethnicities and a wide range of ages. The images themselves were centered on the face, taken at a common distance, and taken with consistent light levels.
+  
+  In order to prepare the data for analysis, the images were transformed into multivariate observations by concatenating each column of pixels into one vector, and averaging the red, green, and blue channels of the pixels to create a single gray scale value in the interval $[0,1]$. Additionally, the overall average image was subtracted from each observation to center the data.
+  
+  The final design matrices $\bm{X}_{g} \in \mathbb{R}^{n\times p}$ (across each population $g$) are shown below. 
+  
+  \vspace{2em}
+  
+  \noindent
+  \begin{minipage}{\columnwidth}
+    \makeatletter
+    \newcommand{\@captype}{table}
+    \makeatother
+    \centering
+    \begin{tabular}{lll}
+    \hline
+    $n$ & $p$ & Group ($g$) \\
+    \hline
+     50  & 93600 & Male, Smiling \\
+     50  & 93600 & Female, Smiling \\
+     50  & 93600 & Male, Neutral \\
+     50  & 93600 & Female, Neutral \\
+    \hline
+    \end{tabular}
+    \caption{Final variable ($p$) and observation ($n$) counts}
+  \end{minipage}
+
+  
+  \section{Analysis}
+  In order to classify the different images into the various distinct populations, LDA can be applied. However, as the data have extreme dimensionality ($n << p$), feature reduction needs to be performed before LDA analysis is applicable or practical. Additionally, high correlation between adjacent pixels means multicollinearity issues are likely. To reduce $p$ to a reasonable number, and orthogonalize the resulting variables, I chose to use PCA. Fortunately, the common scale of the pixels avoids scaling sensitivity issues with PCA.
+  
+  \subsection{Computational Considerations}
+  While PCA is clearly useful in combatting inherent issues with the image data, one practical problem remains. In order to compute the principal components, one must perform an eigendecomposition of the covariance matrix. As the computational complexity of eigendecomposition can only be greater than that of matrix multiplication, without any simplifications we can expect an asymptotic runtime \cite{stothers2010complexity} proportional to $\approx O(p^{2.37})$ operations  ($\approx 605$ billion for these data).
+  
+  To get around this issue, we can use the fact that the number of non-zero eigenvalues (corresponding to useful principal components) is bounded by the rank of the matrix. Furthermore, the rank of a covariance matrix is bounded by the number of observations. Therefore, we have for centered $\bm{X}\in\mathbb{R}^{n\times p}$, $\bm{S} = \frac{1}{n-1}\bm{X}\tck\bm{X}$. For some eigenvector $\bm{v}_i$ of $\bm{X}\bm{X}\tck$,
+    $$
+      \bm{X}\bm{X}\tck\bm{v}_i = \lambda_i\bm{v}_i
+\qaq      \bm{X}\tck\bm{X}\bm{X}\tck\bm{v}_i = \lambda \bm{X}\tck\bm{v}_i
+    $$
+    If $\bm{v}_i$ is an eigenvector of $\bm{X}\bm{X}\tck$, then $\bm{X}\tck\bm{v}_i$ is an eigenvector of $\bm{X}\tck\bm{X}$. We now only need to find the eigenvectors for $\bm{X}\bm{X}\tck\in\mathbb{R}^{n\times n}$ (a much smaller matrix) to get all the eigenvectors (with non-zero eigenvalues) of $\bm{S}$.
+    
+  \subsection{PCA - FEI Face Data}
+  
+  After computing the principal components for the FEI dataset (combining all populations), it is immediately apparent that much of the information present in the images can be effectively represented in far fewer variables than the count of pixels.
+  
+  \noindent
+  \begin{minipage}{\columnwidth}
+    \makeatletter
+    \newcommand{\@captype}{figure}
+    \makeatother
+    \centering
+    \includegraphics[height=6cm]{../output/eig_cum_variance.pdf}
+    \caption{Cumulative explained variance of principal components derived from facial images.}
+  \end{minipage}
+  
+  \vspace{1em}
+    As shown above, over 95\% of the variance of the FEI data is captured by fewer than 90 principal components. Furthermore, the first PC alone captures over 30\% of the variance. Plotting the first and second components of the FEI data against one another, we can see that the genders are clearly divided.
+  
+  \noindent
+  \begin{minipage}{\columnwidth}
+    \makeatletter
+    \newcommand{\@captype}{figure}
+    \makeatother
+    \centering
+    \includegraphics[height=7cm]{../output/pc_pairs_gender_1_2.pdf}
+    \caption{First two PC's derived from facial images.}
+  \end{minipage}
+
+  \vspace{1em}
+  
+  As shown in Appendix 4.1 the pricipal components do not present a clean visual division between the types of facial expression. 
+  
+  One particularly nice property of PCA for image analysis is that the eigenvectors can be shown as images themselves (often referred to as ``eigenfaces'')\cite{heseltine2003face}. This allows for effective and intuitive illustration of image features that effectively divide the different populations.
+
+  \noindent
+  \begin{minipage}{\columnwidth}
+    \makeatletter
+    \newcommand{\@captype}{figure}
+    \makeatother
+    \centering
+    \includegraphics[height=6cm]{../output/eig_1_heatmap.pdf}
+    \caption{Heatmap of first PC from facial images.}
+  \end{minipage}
+  
+    \vspace{1em}
+    Shown above, the components of the first eigenvector (from the facial image data) are mapped back to pixel positions and shown as a heatmap, where negative values are in blue and positive values in orange.
+    
+    Comparing this heatmap to the computed average images (shown below) for both genders, we can immediately see that the first PC captures differences in hair style and head shape between genders. 
+      
+  \noindent
+  \begin{minipage}{\columnwidth}
+    \makeatletter
+    \newcommand{\@captype}{figure}
+    \makeatother
+    \centering
+    \subfloat[Male]{%
+      \includegraphics[width=2cm]{../output/avg_male.jpg}%
+    }\qquad%
+    \subfloat[Female]{%
+      \includegraphics[width=2cm]{../output/avg_female.jpg}%
+    }
+    \caption{Average images for males and females}
+  \end{minipage}
+  
+  \vspace{1em}
+    Juxtaposing the clean separation of genders by the first PC to the less clear separation of facial expression suggests that the subtlety / simplicity of the population differences has a strong effect on the efficiency of the resulting PC's.  
+    
+  \subsection{LDA - FEI Face Data}
+  
+  In order to classify the FEI face images as containing males or females, as well as whether or not the individual was smiling, LDA was performed on the computed principal components.
+  
+  To test the LDA assumption of multivariate normality, I produced chi-squared plots of the principal components.
+  
+  \noindent
+  \begin{minipage}{\columnwidth}
+    \makeatletter
+    \newcommand{\@captype}{figure}
+    \makeatother
+    \centering
+    \includegraphics[height=7cm]{../output/chi-squared-face.pdf}
+    \caption{$\mathcal{X}^2$ Plot of $PC_1-PC_{20}$ from FEI Data}
+  \end{minipage}
+
+  \vspace{1em}
+  Examining the plot above, we can see a slight deviation from the $45^{\circ}$ line suggesting the principal components might not be mutivariate normal. As the values of the principal components include negative numbers, A Box-Cox transformation could not be applied. A Yeo-Johnson power transformation \cite{yeo2000new} was tested, though it did not improve appearance of normality in chi-square plots or the Royston normality test.
+  
+  However, the deviation is not intense and previous work \cite{li2006using} has shown that for image object recognition, LDA can achieve good performance even with possible non-normality.  Therefore, I proceed with LDA as a classification tool in this analysis.
+  
+  Below, the accuracy rate for separate leave-one-out cross-validation (LOOCV) trials are displayed, with each LOOCV trial including the first $k$ principal components, $k=\crl{1,\dots,195}$. 
+
+  \noindent
+  \begin{minipage}{\columnwidth}
+    \makeatletter
+    \newcommand{\@captype}{figure}
+    \makeatother
+    \centering
+    \includegraphics[height=7cm]{../output/loo_lda_gender.pdf}
+    \caption{LOOCV accuracy for LDA classification of gender, including the first $k$ PC's}
+  \end{minipage}
+  
+  \vspace{1em}
+  As shown above, the model acheives high cross-validated accuracy with even just one principal component. This makes intuitive sense, given how well the data are linearly separated via the first principal component (Figure 4). Furthermore, accuracy rapidly decreases as the degrees of freedom fall with the inclusion of more principal components.
+  
+  Next, examining the prediction accuracy for classifying facial expression as smiling or neutral, we see that it takes more principal components to reach similar levels of accuracy. As shown in Appendix 4.1, facial expressions are not as cleanly divided as gender in the first few PC's.
+  
+  \noindent
+  \begin{minipage}{\columnwidth}
+    \makeatletter
+    \newcommand{\@captype}{figure}
+    \makeatother
+    \centering
+    \includegraphics[height=7cm]{../output/loo_lda_smile.pdf}
+    \caption{LOOCV accuracy for LDA classification of facial expression, including the first $k$ PC's}
+  \end{minipage}
+  
+    \vspace{1em}
+    Overall, even with potential violation of the assumption of normality, LDA performs well at classifying the FEI images.
+    
+    In addition to LDA analysis, QDA was performed (to relax the assumption of equal covariance matricies present in LDA). However, as shown below, it appears as if overall performance is roughly equal between the two models, perhaps due to the good linear separation of genders by the first PC.
+    
+  \noindent
+  \begin{minipage}{\columnwidth}
+    \makeatletter
+    \newcommand{\@captype}{figure}
+    \makeatother
+    \centering
+    \includegraphics[height=7cm]{../output/loo_qda_gender.pdf}
+    \caption{LOOCV accuracy for QDA classification of gender, including the first $k$ PC's}
+  \end{minipage}
+
+  \section{Conclusions}
+  
+  After analyzing two different sets of image data, it is clear that PCA and LDA can be effective, accurate tools for classification of images.
+  
+  The issues of high dimensionality and multicollinearity present in image data are effectively resolved through the use of principal components analysis. For images which have clear patterns separating populations, as was the case for hairstyle separating gender, principal components can be extremely efficient in identifying core object features. 
+  
+  With regard to Linear Descriminant Analysis, although the assumption of normality is not strictly satisfied, the empirical performance is strong.
+  
+  Further investigation of this topic might take several routes. To relax the requirement of normality (and potentially further increase performance), logistic regression and support vector machine models might be appropriate alternative classifiers.
+  
+  Additionally, further exploration of the affect of image quality and attributes on performance is merited. It is possible that LDA and PCA are sensitive to greater differences among images with respect to rotation, skew, and lighting.
+  \printbibliography   
+  \vfill
+  \end{multicols}
+
+  \section{Appendix}
+  
+  \subsection{Pairwise Plots of FEI Principal Components}
+  
+  \begin{figure}[!ht]
+  \centering
+  \includegraphics[height=9cm]{../output/pc_pairs_gender.pdf}
+  \captionsetup{labelformat=simple}
+  \caption{First three principal components with gender indicated}
+  \end{figure}
+  
+  \begin{figure}[!ht]
+  \centering
+  \includegraphics[height=9cm]{../output/pc_pairs_smile.pdf}
+  \captionsetup{labelformat=simple}
+  \caption{First three principal components with facial expression indicated}
+  \end{figure}
+  
+  
+  \subsection{Additional QDA Classification Results}
+  \noindent
+  \begin{minipage}{\columnwidth}
+    \makeatletter
+    \newcommand{\@captype}{figure}
+    \makeatother
+    \centering
+    \subfloat[Facial expression]{%
+          \includegraphics[height=7cm]{../output/loo_qda_smile.pdf}
+    }\qquad%
+    \caption{LOOCV Accuracy for QDA Classification using the first $k$ PC's}
+  \end{minipage}
+  
+  \clearpage
+  \subsection{Eigenvector Heatmaps of FEI Images}
+  \begin{figure}[!ht]
+  \captionsetup[subfigure]{labelformat=empty}
+  \centering
+  \subfloat[$\bm{e}_1$]{\includegraphics[height=8cm]{../output/eig_1_heatmap.pdf}}
+  \subfloat[$\bm{e}_2$]{\includegraphics[height=8cm]{../output/eig_2_heatmap.pdf}}
+  \captionsetup{labelformat=simple}
+  \caption{Heatmaps of first two eigenvectors}
+  \end{figure}
+  
+  \begin{figure}[!ht]
+  \captionsetup[subfigure]{labelformat=empty}
+  \centering
+  \subfloat[$\bm{e}_3$]{\includegraphics[height=8cm]{../output/eig_3_heatmap.pdf}}
+  \subfloat[$\bm{e}_4$]{\includegraphics[height=8cm]{../output/eig_4_heatmap.pdf}}
+  \captionsetup{labelformat=simple}
+  \caption{Heatmaps of third and fourth eigenvectors}
+  \end{figure}  
+  
+\end{document}

@@ -1,0 +1,9 @@
+data/color
+data/normalized
+output
+.RHistory
+paper/paper*
+!paper/paper.pdf
+!paper/paper.tex
+paper/*temp.tex
+.DS_Store
